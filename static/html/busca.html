@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca, Favoritos e Recomendações</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        form, button {
+            display: block;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            background-color: white;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Busca de Livros, Favoritos e Recomendações</h1>
+
+    <div class="container">
+        <h2>Buscar Livros e Autores</h2>
+        <input type="text" id="search-term" placeholder="Digite o termo de busca">
+        <button id="fetch-data">Buscar</button>
+
+        <h3>Livros:</h3>
+        <ul id="books-list"></ul>
+
+        <h3>Autores:</h3>
+        <ul id="authors-list"></ul>
+    </div>
+
+    <div class="container">
+        <h2>Favoritos e Recomendações</h2>
+        <h3>Favoritos:</h3>
+        <ul id="favorites-list"></ul>
+
+        <h3>Recomendações:</h3>
+        <ul id="recommendations-list"></ul>
+    </div>
+
+    <!-- Botão para Gerenciar Livros e Autores -->
+    <div class="container">
+        <button id="manage-crud">Gerenciar Livros e Autores</button>
+    </div>
+
+    <script>
+        // Pega o token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+            alert('Token não encontrado. Faça o login novamente.');
+            window.location.href = 'login_register.html';
+        }
+
+        // Função para buscar Livros e Autores
+        document.getElementById('fetch-data').addEventListener('click', function() {
+            const searchTerm = document.getElementById('search-term').value.trim();
+
+            if (searchTerm === '') {
+                alert('Digite um termo de busca!');
+                return;
+            }
+
+            // Buscar Livros
+            fetch(`http://127.0.0.1:8000/api/books/?search=${searchTerm}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const booksList = document.getElementById('books-list');
+                booksList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(book => {
+                        const li = document.createElement('li');
+                        li.textContent = `Título: ${book.title}`;
+                        
+                        const favoriteButton = document.createElement('button');
+                        favoriteButton.textContent = 'Favoritar';
+                        favoriteButton.onclick = () => favoriteBook(book.id);
+                        
+                        li.appendChild(favoriteButton);
+                        booksList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar livros:', error));
+
+            // Buscar Autores
+            fetch(`http://127.0.0.1:8000/api/authors/?search=${searchTerm}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const authorsList = document.getElementById('authors-list');
+                authorsList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(author => {
+                        const li = document.createElement('li');
+                        li.textContent = `Nome: ${author.name}`;
+                        authorsList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar autores:', error));
+        });
+
+        // Função para buscar Favoritos do usuário (usando a nova rota)
+        function fetchFavorites() {
+    console.log('Carregando favoritos...');
+    fetch('http://127.0.0.1:8000/api/favorites/list/', {  // Atualize a URL aqui
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('Resposta ao buscar favoritos:', response);  // Verifique a resposta
+        return response.json();
+    })
+    .then(data => {
+        console.log('Dados de favoritos retornados:', data);  // Verifica os dados retornados
+        const favoritesList = document.getElementById('favorites-list');
+        favoritesList.innerHTML = '';  // Limpa a lista
+
+        const favoritos = data.results ? data.results : data;
+
+        if (favoritos && favoritos.length > 0) {
+            favoritos.forEach(favorite => {
+                const li = document.createElement('li');
+                li.textContent = favorite.title;
+                favoritesList.appendChild(li);
+            });
+        } else {
+            const li = document.createElement('li');
+            li.textContent = 'Nenhum favorito encontrado.';
+            favoritesList.appendChild(li);
+        }
+    })
+    .catch(error => console.error('Erro ao buscar favoritos:', error));
+}
+
+
+        // Função para favoritar um livro e atualizar a lista de favoritos
+        function favoriteBook(bookId) {
+            console.log(`Favoritando o livro de ID ${bookId}...`);
+            fetch('http://127.0.0.1:8000/api/favorites/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ book_id: bookId })
+            })
+            .then(response => {
+                console.log('Resposta ao favoritar livro:', response);
+                if (response.status === 201) {
+                    alert('Livro favoritado com sucesso!');
+                    fetchFavorites();  // Atualiza a lista de favoritos
+                } else {
+                    alert('Erro ao favoritar livro.');
+                }
+            })
+            .catch(error => console.error('Erro ao favoritar livro:', error));
+        }
+
+        // Função para buscar Recomendações
+        function fetchRecommendations() {
+            fetch('http://127.0.0.1:8000/api/favorites/recommendations/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const recommendationsList = document.getElementById('recommendations-list');
+                recommendationsList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.recommendations) {
+                    data.recommendations.forEach(recommendation => {
+                        const li = document.createElement('li');
+                        li.textContent = recommendation.title;
+                        recommendationsList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar recomendações:', error));
+        }
+
+        // Redireciona para a página CRUD
+        document.getElementById('manage-crud').addEventListener('click', function() {
+            window.location.href = 'crud.html?token=' + token;
+        });
+
+        // Carregar Favoritos e Recomendações ao carregar a página
+        window.onload = function() {
+            fetchFavorites();
+            fetchRecommendations();
+        };
+    </script>
+</body>
+</html>

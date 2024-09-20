@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login e Registro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        form, button {
+            display: block;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login e Registro de Usuários</h1>
+
+    <!-- Formulário de Login -->
+    <div id="login-container">
+        <h2>Login</h2>
+        <form id="login-form">
+            <label for="username-login">Usuário:</label>
+            <input type="text" id="username-login" name="username" required>
+
+            <label for="password-login">Senha:</label>
+            <input type="password" id="password-login" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <button id="show-register">Registrar Novo Usuário</button>
+    </div>
+
+    <!-- Formulário de Registro (inicialmente escondido) -->
+    <div id="register-container" class="hidden">
+        <h2>Registrar Novo Usuário</h2>
+        <form id="register-form">
+            <label for="username-register">Usuário:</label>
+            <input type="text" id="username-register" name="username" required>
+
+            <label for="email-register">Email:</label>
+            <input type="email" id="email-register" name="email" required>
+
+            <label for="password-register">Senha:</label>
+            <input type="password" id="password-register" name="password" required>
+
+            <button type="submit">Registrar</button>
+        </form>
+        <button id="back-to-login">Voltar para Login</button>
+    </div>
+
+    <script>
+        let token = '';  // Token JWT será armazenado aqui após login
+
+        // Exibe o formulário de registro
+        document.getElementById('show-register').addEventListener('click', function() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('register-container').classList.remove('hidden');
+        });
+
+        // Volta para o login
+        document.getElementById('back-to-login').addEventListener('click', function() {
+            document.getElementById('register-container').classList.add('hidden');
+            document.getElementById('login-container').classList.remove('hidden');
+        });
+
+        // Função de Registro
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username-register').value;
+            const email = document.getElementById('email-register').value;
+            const password = document.getElementById('password-register').value;
+
+            fetch('http://127.0.0.1:8000/api/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                alert('Usuário registrado com sucesso!');
+                document.getElementById('register-container').classList.add('hidden');
+                document.getElementById('login-container').classList.remove('hidden');
+            })
+            .catch(error => console.error('Erro:', error));
+        });
+
+        // Função de Login
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username-login').value;
+            const password = document.getElementById('password-login').value;
+
+            fetch('http://127.0.0.1:8000/api/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                token = data.access;
+                console.log('Token:', token);
+                alert('Login realizado com sucesso!');
+
+                // Redireciona para a página de busca
+                window.location.href = 'busca.html?token=' + token;
+            })
+            .catch(error => console.error('Erro:', error));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD de Livros e Autores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        form, button {
+            display: block;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .container {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerenciamento de Livros e Autores (CRUD)</h1>
+
+    <!-- Formulário para incluir novo livro -->
+    <div class="container">
+        <h2>Incluir Novo Livro</h2>
+        <form id="add-book-form">
+            <label for="book-title">Título do Livro:</label>
+            <input type="text" id="book-title" name="book-title" required>
+
+            <label for="book-author">Autor (IDs separados por vírgula):</label>
+            <input type="text" id="book-author" name="book-author" required>
+
+            <button type="submit">Incluir Livro</button>
+        </form>
+    </div>
+
+    <!-- Campo de busca e tabela de resultados -->
+    <div class="container">
+        <h2>Buscar Livros</h2>
+        <input type="text" id="search-term" placeholder="Buscar por título">
+        <button id="search-books">Buscar</button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Título do Livro</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="books-table-body">
+                <!-- Os resultados da busca serão inseridos aqui -->
+            </tbody>
+        </table>
+
+        <!-- Botões de paginação -->
+        <div id="pagination-controls">
+            <button id="prev-page" disabled>Anterior</button>
+            <button id="next-page" disabled>Próxima</button>
+        </div>
+    </div>
+
+    <script>
+        let nextPageUrl = null;
+        let prevPageUrl = null;
+
+        // Pega o token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+            alert('Token não encontrado. Faça o login novamente.');
+            window.location.href = 'login_register.html';
+        }
+
+        // Função para carregar a lista de livros com paginação
+        function loadBooks(url) {
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const booksTableBody = document.getElementById('books-table-body');
+                booksTableBody.innerHTML = '';  // Limpa a tabela
+
+                if (data && data.results) {
+                    data.results.forEach(book => {
+                        const row = document.createElement('tr');
+
+                        // Coluna do título do livro
+                        const titleCell = document.createElement('td');
+                        titleCell.textContent = book.title;
+                        row.appendChild(titleCell);
+
+                        // Coluna com botões de ações (editar, excluir)
+                        const actionsCell = document.createElement('td');
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Editar';
+                        editButton.onclick = () => editBook(book.id);
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Excluir';
+                        deleteButton.onclick = () => deleteBook(book.id);
+                        actionsCell.appendChild(editButton);
+                        actionsCell.appendChild(deleteButton);
+                        row.appendChild(actionsCell);
+
+                        booksTableBody.appendChild(row);
+                    });
+
+                    // Paginação
+                    nextPageUrl = data.next;
+                    prevPageUrl = data.previous;
+                    document.getElementById('next-page').disabled = !nextPageUrl;
+                    document.getElementById('prev-page').disabled = !prevPageUrl;
+                }
+            })
+            .catch(error => console.error('Erro ao buscar livros:', error));
+        }
+
+        // Função para buscar livros com termo de busca e iniciar paginação
+        document.getElementById('search-books').addEventListener('click', function() {
+            const searchTerm = document.getElementById('search-term').value.trim();
+            const searchUrl = `http://127.0.0.1:8000/api/books/?search=${searchTerm}&page=1`;
+            loadBooks(searchUrl);
+        });
+
+        // Função para incluir um novo livro
+        document.getElementById('add-book-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('book-title').value;
+            const authorIds = document.getElementById('book-author').value;
+
+            fetch('http://127.0.0.1:8000/api/books/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    authors: authorIds  // IDs dos autores como string
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    // Exibir uma mensagem de erro mais detalhada
+                    return response.json().then(errorData => {
+                        throw new Error(`Erro: ${JSON.stringify(errorData)}`);
+                    });
+                }
+            })
+            .then(data => {
+                alert('Livro incluído com sucesso!');
+                document.getElementById('search-books').click();  // Recarrega a lista de livros
+            })
+            .catch(error => {
+                console.error('Erro ao incluir livro:', error);
+                alert('Erro ao incluir livro: ' + error.message);
+            });
+        });
+
+        // Função para incluir um novo livro
+        document.getElementById('add-book-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('book-title').value;
+    const authorIds = document.getElementById('book-author').value;
+
+    fetch('http://127.0.0.1:8000/api/books/', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            title: title,
+            authors: authorIds,  // IDs dos autores como string
+            ratings_count: 0,  // Valor padrão
+            average_rating: 0.0,  // Valor padrão
+            text_reviews_count: 0,  // Valor padrão
+            work_ids: '0',  // Valor padrão (ajuste conforme necessário)
+            book_ids: '0',  // Valor padrão (ajuste conforme necessário)
+            works_count: 1  // Valor padrão
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();  // Tudo certo, retorna os dados
+        } else {
+            return response.json().then(errorData => {
+                // Exibe o erro de forma mais suave, sem lançar uma exceção
+                console.error('Erro na inclusão:', errorData);
+                alert('Erro ao incluir livro: Verifique os campos obrigatórios.');
+                throw new Error('Erro na inclusão.');
+            });
+        }
+    })
+    .then(data => {
+        alert('Livro incluído com sucesso!');
+        document.getElementById('search-books').click();  // Recarrega a lista de livros
+    })
+    .catch(error => {
+        console.error('Erro ao incluir livro:', error.message);
+        // O erro agora é tratado de forma mais leve
+    });
+});
+
+
+
+        // Função para editar um livro
+
+        function editBook(bookId) {
+    const newTitle = prompt('Digite o novo título do livro:');
+    if (!newTitle) return;
+
+    // Aqui, devemos obter os valores atuais de work_ids e book_ids para não removê-los
+    fetch(`http://127.0.0.1:8000/api/books/${bookId}/`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(bookData => {
+        fetch(`http://127.0.0.1:8000/api/books/${bookId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: newTitle,
+                work_ids: bookData.work_ids,  // Manter o valor atual
+                book_ids: bookData.book_ids,  // Manter o valor atual
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                return response.json().then(errorData => {
+                    throw new Error(`Erro ao atualizar livro: ${JSON.stringify(errorData)}`);
+                });
+            }
+        })
+        .then(data => {
+            alert('Livro atualizado com sucesso!');
+            document.getElementById('search-books').click();  // Recarrega a lista de livros
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar livro:', error);
+            alert('Erro ao atualizar livro: ' + error.message);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao buscar dados do livro:', error);
+    });
+}
+
+
+        // Função para excluir um livro
+        function deleteBook(bookId) {
+            const confirmDelete = confirm('Tem certeza que deseja excluir este livro?');
+            if (!confirmDelete) return;
+
+            fetch(`http://127.0.0.1:8000/api/books/${bookId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.status === 204) {
+                    alert('Livro excluído com sucesso!');
+                    document.getElementById('search-books').click();  // Recarrega a lista de livros
+                } else {
+                    alert('Erro ao excluir o livro.');
+                }
+            })
+            .catch(error => console.error('Erro ao excluir livro:', error));
+        }
+
+        // Botão para ir para a página anterior
+        document.getElementById('prev-page').addEventListener('click', function() {
+            if (prevPageUrl) {
+                loadBooks(prevPageUrl);
+            }
+        });
+
+        // Botão para ir para a próxima página
+        document.getElementById('next-page').addEventListener('click', function() {
+            if (nextPageUrl)
+            if (nextPageUrl) {
+                loadBooks(nextPageUrl);
+            }
+        });
+
+        // Carregar a lista de livros ao carregar a página
+        document.getElementById('search-books').click();
+    </script>
+</body>
+</html>

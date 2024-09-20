@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste da API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        form, button {
+            display: block;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            background-color: white;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            margin-top: 40px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste da API: Login e Gestão de Livros</h1>
+
+    <!-- Formulário de Login -->
+    <div id="login-container">
+        <h2>Login</h2>
+        <form id="login-form">
+            <label for="username-login">Usuário:</label>
+            <input type="text" id="username-login" name="username" required>
+
+            <label for="password-login">Senha:</label>
+            <input type="password" id="password-login" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <button id="show-register">Registrar Novo Usuário</button>
+    </div>
+
+    <!-- Formulário de Registro (inicialmente escondido) -->
+    <div id="register-container" class="hidden">
+        <h2>Registrar Novo Usuário</h2>
+        <form id="register-form">
+            <label for="username-register">Usuário:</label>
+            <input type="text" id="username-register" name="username" required>
+
+            <label for="email-register">Email:</label>
+            <input type="email" id="email-register" name="email" required>
+
+            <label for="password-register">Senha:</label>
+            <input type="password" id="password-register" name="password" required>
+
+            <button type="submit">Registrar</button>
+        </form>
+        <button id="back-to-login">Voltar para Login</button>
+    </div>
+
+    <!-- Área de busca e gestão de livros (inicialmente escondida) -->
+    <div id="main-content" class="hidden">
+        <div class="container">
+            <h2>Buscar Livros e Autores</h2>
+
+            <!-- Campo de texto para digitar o termo de busca -->
+            <input type="text" id="search-term" placeholder="Digite o termo de busca">
+
+            <button id="fetch-data">Buscar Livros e Autores</button>
+
+            <h3>Livros:</h3>
+            <ul id="books-list"></ul>
+
+            <h3>Autores:</h3>
+            <ul id="authors-list"></ul>
+        </div>
+
+        <!-- Favoritos e Recomendações -->
+        <div class="container">
+            <h2>Favoritos e Recomendações</h2>
+            <h3>Seus Favoritos:</h3>
+            <ul id="favorites-list"></ul>
+
+            <h3>Recomendações:</h3>
+            <ul id="recommendations-list"></ul>
+        </div>
+
+        <!-- Botões de gerenciamento -->
+        <div class="container">
+            <h2>Gerenciamento de Livros e Autores</h2>
+            <button id="add-book">Incluir Livro</button>
+            <button id="add-author">Incluir Autor</button>
+        </div>
+    </div>
+
+    <script>
+        let token = '';  // Token JWT será armazenado aqui após login
+
+        // Exibe o formulário de registro
+        document.getElementById('show-register').addEventListener('click', function() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('register-container').classList.remove('hidden');
+        });
+
+        // Volta para o login
+        document.getElementById('back-to-login').addEventListener('click', function() {
+            document.getElementById('register-container').classList.add('hidden');
+            document.getElementById('login-container').classList.remove('hidden');
+        });
+
+        // Função de Registro
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username-register').value;
+            const email = document.getElementById('email-register').value;
+            const password = document.getElementById('password-register').value;
+
+            fetch('http://127.0.0.1:8000/api/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                alert('Usuário registrado com sucesso!');
+                document.getElementById('register-container').classList.add('hidden');
+                document.getElementById('login-container').classList.remove('hidden');
+            })
+            .catch(error => console.error('Erro:', error));
+        });
+
+        // Função de Login
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username-login').value;
+            const password = document.getElementById('password-login').value;
+
+            fetch('http://127.0.0.1:8000/api/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                token = data.access;
+                console.log('Token:', token);
+                alert('Login realizado com sucesso!');
+
+                // Esconde a área de login e exibe a área principal
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+
+                // Carregar favoritos e recomendações
+                fetchFavorites();
+                fetchRecommendations();
+            })
+            .catch(error => console.error('Erro:', error));
+        });
+
+        // Função para buscar Livros e Autores com o termo digitado
+        document.getElementById('fetch-data').addEventListener('click', function() {
+            const searchTerm = document.getElementById('search-term').value.trim();
+            if (token === '') {
+                alert('Faça o login primeiro!');
+                return;
+            }
+            if (searchTerm === '') {
+                alert('Digite um termo de busca!');
+                return;
+            }
+
+            // Buscar Livros
+            fetch(`http://127.0.0.1:8000/api/books/?search=${searchTerm}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    alert('Token inválido ou sem permissão!');
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                const booksList = document.getElementById('books-list');
+                booksList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(book => {
+                        const li = document.createElement('li');
+                        li.textContent = book.title;
+                        booksList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar livros:', error));
+
+            // Buscar Autores
+            fetch(`http://127.0.0.1:8000/api/authors/?search=${searchTerm}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    alert('Token inválido ou sem permissão!');
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                const authorsList = document.getElementById('authors-list');
+                authorsList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(author => {
+                        const li = document.createElement('li');
+                        li.textContent = author.name;
+                        authorsList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar autores:', error));
+        });
+
+        // Função para buscar favoritos do usuário
+        function fetchFavorites() {
+            fetch('http://127.0.0.1:8000/api/favorites/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const favoritesList = document.getElementById('favorites-list');
+                favoritesList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(favorite => {
+                        const li = document.createElement('li');
+                        li.textContent = favorite.title;
+                        favoritesList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar favoritos:', error));
+        }
+
+        // Função para buscar recomendações
+        function fetchRecommendations() {
+            fetch('http://127.0.0.1:8000/api/favorites/recommendations/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const recommendationsList = document.getElementById('recommendations-list');
+                recommendationsList.innerHTML = '';  // Limpa a lista
+
+                if (data && data.results) {
+                    data.results.forEach(recommendation => {
+                        const li = document.createElement('li');
+                        li.textContent = recommendation.title;
+                        recommendationsList.appendChild(li);
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar recomendações:', error));
+        }
+    </script>
+</body>
+</html>
